@@ -188,68 +188,121 @@ public class Server {
 
     }
 
+    private static void readWebSocketMessage(Socket socket) throws IOException {
+        InputStream inputStream = socket.getInputStream();
+        while (true) {
+            int bt = inputStream.read();
+            // Get the payload Length
+            int payloadLength;
+            int secondByte = inputStream.read();
+            int dif = secondByte - 128;
+            if (dif >= 0 && dif <= 125) {
+                payloadLength = dif;
+            } else if (dif == 126) {
+                payloadLength = getPayloadLength(
+                        inputStream.read(), // 0
+                        inputStream.read()); // 1
+            } else if (dif == 127) {
+                payloadLength = getPayloadLength(
+                        inputStream.read(), // 0
+                        inputStream.read(), // 1
+                        inputStream.read(), // 2
+                        inputStream.read(), // 3
+                        inputStream.read(), // 4
+                        inputStream.read(), // 5
+                        inputStream.read(), // 6
+                        inputStream.read()); // 7
+            } else {
+                throw new RuntimeException("Error in payload Length diff == " + dif);
+            }
+            // Get the decodeKeys
+            byte[] decodeKeys = new byte[]{
+                    (byte) inputStream.read(),
+                    (byte) inputStream.read(),
+                    (byte) inputStream.read(),
+                    (byte) inputStream.read()
+            };
+            // Get the data
+            byte[] data = new byte[payloadLength];
+            for (int i = 0; i < payloadLength; i++) {
+                byte b = (byte) inputStream.read();
+                data[i] = b;
+            }
+
+            // Decode the message
+            byte[] decodedData = getDecodedMessage(decodeKeys, data);
+
+            StringBuilder msg = new StringBuilder();
+            for (int i = 0; i < payloadLength; i++) {
+                msg.append((char) decodedData[i]);
+            }
+            System.out.println("MESSAGE == " + msg);
+
+        }
+    }
+
     private static void webSocket(Socket socket) throws IOException {
         // try and send data
         sendMessage(null, socket);
+        new Thread(()->{
+            try {
+                readWebSocketMessage(socket);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }).start();
 
-        InputStream inputStream = socket.getInputStream();
-        int bt = inputStream.read();
-        System.out.println("First Byte == " + bt);
-        String bits = Integer.toBinaryString(bt);
-        String Opcode = bits.substring(bits.length() - 4);
-        System.out.println("Opcode == " + Opcode);
-
-        // Get the payloadLength
-        // test the second bit
-        int payloadLength;
-        int secondByte = inputStream.read();
-        int dif = secondByte - 128;
-        if (dif >= 0 && dif <= 125) {
-            payloadLength = dif;
-        } else if (dif == 126) {
-            payloadLength = getPayloadLength(
-                    inputStream.read(), // 0
-                    inputStream.read()); // 1
-        } else if (dif == 127) {
-            payloadLength = getPayloadLength(
-                    inputStream.read(), // 0
-                    inputStream.read(), // 1
-                    inputStream.read(), // 2
-                    inputStream.read(), // 3
-                    inputStream.read(), // 4
-                    inputStream.read(), // 5
-                    inputStream.read(), // 6
-                    inputStream.read()); // 7
-        } else {
-            throw new RuntimeException("Error in payload Length diff == " + dif);
-        }
-//        System.out.println("PayloadLength == " + payloadLength);
-        // Get the decodeKeys
-        byte[] decodeKeys = new byte[]{
-                (byte) inputStream.read(),
-                (byte) inputStream.read(),
-                (byte) inputStream.read(),
-                (byte) inputStream.read()
-        };
-
-        byte[] data = new byte[payloadLength];
-        for (int i = 0; i < payloadLength; i++) {
-            byte b = (byte) inputStream.read();
-            data[i] = b;
-//            System.out.println("BYTE no : " + i + " == " + b);
-        }
-
-        byte[] decodedData = getDecodedMessage(decodeKeys, data);
-//        FileOutputStream fileOutputStream = new FileOutputStream("src/main/java/img.jpg");
-//        fileOutputStream.write(decodedData);
-//        fileOutputStream.flush();
-//        System.out.println("Done Writing to the file");
-//        fileOutputStream.close();
-        StringBuilder msg = new StringBuilder();
-        for (int i = 0; i < payloadLength; i++) {
-            msg.append((char) decodedData[i]);
-        }
-        System.out.println("MESSAGE == " + msg);
+//        InputStream inputStream = socket.getInputStream();
+//        int bt = inputStream.read();
+//        System.out.println("First Byte == " + bt);
+//        String bits = Integer.toBinaryString(bt);
+//        String Opcode = bits.substring(bits.length() - 4);
+//        System.out.println("Opcode == " + Opcode);
+//
+//        // Get the payloadLength
+//        int payloadLength;
+//        int secondByte = inputStream.read();
+//        int dif = secondByte - 128;
+//        if (dif >= 0 && dif <= 125) {
+//            payloadLength = dif;
+//        } else if (dif == 126) {
+//            payloadLength = getPayloadLength(
+//                    inputStream.read(), // 0
+//                    inputStream.read()); // 1
+//        } else if (dif == 127) {
+//            payloadLength = getPayloadLength(
+//                    inputStream.read(), // 0
+//                    inputStream.read(), // 1
+//                    inputStream.read(), // 2
+//                    inputStream.read(), // 3
+//                    inputStream.read(), // 4
+//                    inputStream.read(), // 5
+//                    inputStream.read(), // 6
+//                    inputStream.read()); // 7
+//        } else {
+//            throw new RuntimeException("Error in payload Length diff == " + dif);
+//        }
+//        // Get the decodeKeys
+//        byte[] decodeKeys = new byte[]{
+//                (byte) inputStream.read(),
+//                (byte) inputStream.read(),
+//                (byte) inputStream.read(),
+//                (byte) inputStream.read()
+//        };
+//
+//        byte[] data = new byte[payloadLength];
+//        for (int i = 0; i < payloadLength; i++) {
+//            byte b = (byte) inputStream.read();
+//            data[i] = b;
+//        }
+//
+//        byte[] decodedData = getDecodedMessage(decodeKeys, data);
+//
+//        StringBuilder msg = new StringBuilder();
+//        for (int i = 0; i < payloadLength; i++) {
+//            msg.append((char) decodedData[i]);
+//        }
+//        System.out.println("MESSAGE == " + msg);
     }
 
 

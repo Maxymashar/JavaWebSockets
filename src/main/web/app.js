@@ -1,22 +1,24 @@
-const btn = document.querySelector("button");
-const fileInput = document.getElementById("file");
+const inputButton = document.querySelector("button");
+const inputText = document.querySelector("#textInput");
+const webSocket = new WebSocket(`ws://${location.host}`);
 
-btn.addEventListener("click", () => {
-  // fileInput.click();
-  // fileInput.onchange = () => {
-    // const file = fileInput.files[0];
-    console.log("Starting webSocket");
+webSocket.onopen = () => {
+  console.log("WebSocket is Open 😀😀");
 
-    const webSocket = new WebSocket(`ws://${location.host}`);
-    webSocket.onopen = () => {
-      console.log("Connection open 😎😎😎");
+  inputButton.addEventListener("click", () => {
+    const message = inputText.value;
+    if (message.trim()) {
+      console.log("Message sent == " + message);
+      webSocket.send(message);
+      inputText.value = "";
+    }
+  });
+};
 
-      webSocket.send("new Blob()");
-      // console.log("File", file);
+webSocket.onerror = (e) => {
+  console.error("Error in webSocket 😥😥", e);
+};
 
-      webSocket.onmessage = ({ data }) => {
-        console.log("data", data);
-      };
-    };
-  // };
-});
+webSocket.onclose = () => {
+  console.log("WebSocket clossed");
+};
